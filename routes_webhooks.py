@@ -87,11 +87,23 @@ async def hubspot_webhook(request: Request):
     try:
         lead_id = await insert_lead(lead_data)
     except Exception:
-        # Phone already exists — reset the lead for a fresh session
+        # Phone already exists — check if they're in an active conversation
         from database import clear_messages, get_lead_by_phone as _get
         existing = await _get(phone)
         if existing:
             lead_id = existing["id"]
+            # Don't reset if lead is mid-conversation — just return current state
+            if existing["conversation_stage"] in ("sending", "qualifying", "escalating"):
+                logger.info(f"Ignoring duplicate HubSpot webhook — lead {lead_id} is in active conversation ({existing['conversation_stage']})")
+                elapsed = time.monotonic() - start
+                return HubSpotResponse(
+                    lead_id=lead_id,
+                    urgency_score=existing["urgency_score"],
+                    classification=existing["classification"],
+                    messages_sent=0,
+                    elapsed_seconds=round(elapsed, 2),
+                )
+            # Lead is in "new" or "closing" — safe to reset for fresh session
             await update_lead(lead_id, {
                 "first_name": first_name, "last_name": last_name,
                 "email": email, "company": company,
