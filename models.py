@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 
 # --- HubSpot Webhook ---
@@ -107,7 +107,12 @@ class SendblueResponse(BaseModel):
 class MessageRecord(BaseModel):
     direction: str
     content: str
-    created_at: str
+    created_at: str | datetime
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def coerce_created(cls, v: object) -> str:
+        return v.isoformat() if isinstance(v, datetime) else str(v)
 
 
 class LeadSummary(BaseModel):
@@ -120,7 +125,12 @@ class LeadSummary(BaseModel):
     classification: str
     conversation_stage: str
     turn_count: int
-    created_at: str
+    created_at: str | datetime
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def coerce_created(cls, v: object) -> str:
+        return v.isoformat() if isinstance(v, datetime) else str(v)
 
 
 class LeadDetail(BaseModel):
@@ -139,8 +149,13 @@ class LeadDetail(BaseModel):
     recommended_action: Optional[str]
     conversation_stage: str
     turn_count: int
-    created_at: str
-    updated_at: str
+    created_at: str | datetime
+    updated_at: str | datetime
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def coerce_dates(cls, v: object) -> str:
+        return v.isoformat() if isinstance(v, datetime) else str(v)
 
 
 class LeadDetailResponse(BaseModel):
