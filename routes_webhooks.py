@@ -115,7 +115,11 @@ async def hubspot_webhook(request: Request, background_tasks: BackgroundTasks):
     start = time.monotonic()
     body = await request.json()
 
+    # Log raw payload to diagnose field mapping issues
+    import json
+    logger.info(f"HubSpot raw payload keys: {list(body.keys())}")
     properties = body.get("properties", body)
+    logger.info(f"HubSpot properties: {json.dumps({k: (v if not isinstance(v, dict) else v.get('value')) for k, v in properties.items()}, default=str)}")
 
     first_name = _extract_hubspot_prop(properties, "firstname", "first_name") or "Unknown"
     last_name = _extract_hubspot_prop(properties, "lastname", "last_name") or "Unknown"

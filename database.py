@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS messages (
     direction VARCHAR(20) NOT NULL,
     content TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (lead_id) REFERENCES leads(id)
+    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE
 );
 """
 
@@ -143,6 +143,19 @@ async def init_db():
                 await cur.execute("CREATE INDEX idx_messages_lead_id ON messages(lead_id)")
             except Exception:
                 pass
+            # Migrate: add ON DELETE CASCADE to messages FK if missing
+            try:
+                await cur.execute("""
+                    SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS
+                    WHERE TABLE_NAME = 'messages' AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+                """)
+                row = await cur.fetchone()
+                if row:
+                    fk_name = row["CONSTRAINT_NAME"] if isinstance(row, dict) else row[0]
+                    await cur.execute(f"ALTER TABLE messages DROP FOREIGN KEY {fk_name}")
+                    await cur.execute("ALTER TABLE messages ADD FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE")
+            except Exception:
+                pass  # Already migrated or no FK
     else:
         async with _sqlite_connect() as db:
             await db.executescript(SQLITE_SCHEMA)
