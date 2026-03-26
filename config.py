@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     message_stagger_seconds: float = 2.0
     max_conversation_turns: int = 3
+    admin_api_key: str = ""  # Set in Railway env vars to protect lead endpoints
 
 
 settings = Settings()

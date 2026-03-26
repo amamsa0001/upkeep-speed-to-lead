@@ -84,6 +84,9 @@ async def hubspot_webhook(request: Request):
         "industry": industry,
         "reason_for_interest": reason,
     }
+    # Detect test contacts — allow duplicate re-entry for testing
+    is_test = "test" in first_name.lower() or "test" in last_name.lower()
+
     try:
         lead_id = await insert_lead(lead_data)
     except Exception:
@@ -92,8 +95,8 @@ async def hubspot_webhook(request: Request):
         existing = await _get(phone)
         if existing:
             lead_id = existing["id"]
-            # Don't reset if lead is mid-conversation — just return current state
-            if existing["conversation_stage"] in ("sending", "qualifying", "escalating"):
+            # Don't reset if lead is mid-conversation — UNLESS it's a test contact
+            if not is_test and existing["conversation_stage"] in ("sending", "qualifying", "escalating"):
                 logger.info(f"Ignoring duplicate HubSpot webhook — lead {lead_id} is in active conversation ({existing['conversation_stage']})")
                 elapsed = time.monotonic() - start
                 return HubSpotResponse(
@@ -103,6 +106,8 @@ async def hubspot_webhook(request: Request):
                     messages_sent=0,
                     elapsed_seconds=round(elapsed, 2),
                 )
+            if is_test:
+                logger.info(f"Test contact detected — forcing reset for lead {lead_id}")
             # Lead is in "new" or "closing" — safe to reset for fresh session
             await update_lead(lead_id, {
                 "first_name": first_name, "last_name": last_name,

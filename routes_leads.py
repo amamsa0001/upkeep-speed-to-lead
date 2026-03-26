@@ -1,12 +1,22 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 
-from database import get_lead_by_id, get_transcript, list_leads
+from config import settings
+from database import get_lead_by_id, get_transcript, list_leads, delete_lead, reset_lead
 from models import LeadDetail, LeadDetailResponse, LeadListResponse, LeadSummary, MessageRecord
 
 router = APIRouter()
+
+
+async def verify_admin_key(authorization: str = Header(default="")):
+    """Simple API key auth. If ADMIN_API_KEY is not set, endpoints are open (dev mode)."""
+    if not settings.admin_api_key:
+        return  # No key configured — open access (backwards compatible)
+    expected = f"Bearer {settings.admin_api_key}"
+    if authorization != expected:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
 @router.get("/health")
@@ -18,7 +28,7 @@ async def health():
     }
 
 
-@router.get("/leads", response_model=LeadListResponse)
+@router.get("/leads", response_model=LeadListResponse, dependencies=[Depends(verify_admin_key)])
 async def get_leads(classification: Optional[str] = None):
     rows = await list_leads(classification)
     leads = [
@@ -39,7 +49,7 @@ async def get_leads(classification: Optional[str] = None):
     return LeadListResponse(leads=leads, count=len(leads))
 
 
-@router.get("/leads/{lead_id}", response_model=LeadDetailResponse)
+@router.get("/leads/{lead_id}", response_model=LeadDetailResponse, dependencies=[Depends(verify_admin_key)])
 async def get_lead(lead_id: int):
     row = await get_lead_by_id(lead_id)
     if not row:
@@ -76,3 +86,23 @@ async def get_lead(lead_id: int):
     ]
 
     return LeadDetailResponse(lead=lead, transcript=transcript)
+
+
+@router.delete("/leads/{lead_id}", dependencies=[Depends(verify_admin_key)])
+async def remove_lead(lead_id: int):
+    """Permanently delete a lead and all its messages."""
+    row = await get_lead_by_id(lead_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    await delete_lead(lead_id)
+    return {"status": "deleted", "lead_id": lead_id, "name": f"{row['first_name']} {row['last_name']}"}
+
+
+@router.post("/leads/{lead_id}/reset", dependencies=[Depends(verify_admin_key)])
+async def reset_lead_endpoint(lead_id: int):
+    """Reset a lead to 'new' stage and clear its conversation history."""
+    row = await get_lead_by_id(lead_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    await reset_lead(lead_id)
+    return {"status": "reset", "lead_id": lead_id, "name": f"{row['first_name']} {row['last_name']}"}

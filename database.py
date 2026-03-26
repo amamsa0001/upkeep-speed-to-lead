@@ -130,3 +130,25 @@ async def list_leads(classification: str | None = None) -> list[dict]:
             cursor = await db.execute("SELECT * FROM leads ORDER BY created_at DESC")
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]
+
+
+async def delete_lead(lead_id: int):
+    async with _connect() as db:
+        await db.execute("DELETE FROM messages WHERE lead_id = ?", (lead_id,))
+        await db.execute("DELETE FROM leads WHERE id = ?", (lead_id,))
+        await db.commit()
+
+
+async def reset_lead(lead_id: int):
+    async with _connect() as db:
+        await db.execute("DELETE FROM messages WHERE lead_id = ?", (lead_id,))
+        await db.execute(
+            """UPDATE leads SET
+                conversation_stage = 'new', turn_count = 0,
+                urgency_score = 0, classification = 'unscored',
+                rationale = NULL, recommended_action = NULL,
+                slack_message_ts = NULL, updated_at = datetime('now')
+            WHERE id = ?""",
+            (lead_id,),
+        )
+        await db.commit()
