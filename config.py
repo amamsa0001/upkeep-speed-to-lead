@@ -18,8 +18,11 @@ class Settings(BaseSettings):
     slack_bot_token: str = ""    # Bot token (xoxb-...) for message updates
     slack_channel_id: str = ""   # Channel ID to post in
 
+    # Database
+    mysql_url: str = ""  # Set via Railway MySQL service variable reference
+    database_path: str = "./leads.db"  # SQLite fallback for local dev
+
     # App
-    database_path: str = "./leads.db"
     log_level: str = "INFO"
     message_stagger_seconds: float = 2.0
     max_conversation_turns: int = 3
