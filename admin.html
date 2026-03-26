@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UpKeep Admin</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }
+        .header { display: flex; align-items: center; justify-content: space-between; max-width: 1100px; margin: 0 auto 24px; }
+        .header h1 { font-size: 20px; color: #fff; }
+        .header-actions { display: flex; gap: 8px; align-items: center; }
+        .auth-bar { display: flex; gap: 8px; align-items: center; }
+        .auth-bar input { padding: 8px 12px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; color: #e2e8f0; font-size: 13px; width: 200px; }
+        .auth-bar input:focus { outline: none; border-color: #3b82f6; }
+        .btn { padding: 8px 14px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .btn-primary { background: #3b82f6; color: #fff; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-danger { background: #dc2626; color: #fff; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-warning { background: #f59e0b; color: #000; }
+        .btn-warning:hover { background: #d97706; }
+        .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+        .btn-ghost:hover { background: #1e293b; color: #e2e8f0; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        .stats { display: flex; gap: 12px; max-width: 1100px; margin: 0 auto 20px; flex-wrap: wrap; }
+        .stat-card { background: #1e293b; border-radius: 8px; padding: 16px 20px; flex: 1; min-width: 120px; border: 1px solid #334155; }
+        .stat-card .label { font-size: 11px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; }
+        .stat-card .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+        .stat-card .value.hot { color: #ef4444; }
+        .stat-card .value.warm { color: #f59e0b; }
+        .stat-card .value.low { color: #3b82f6; }
+        .table-wrap { max-width: 1100px; margin: 0 auto; background: #1e293b; border-radius: 10px; border: 1px solid #334155; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #0f172a; text-align: left; padding: 10px 14px; color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; position: sticky; top: 0; }
+        td { padding: 10px 14px; border-top: 1px solid #1e293b; }
+        tr:hover td { background: rgba(59,130,246,0.05); }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .badge-hot { background: rgba(239,68,68,0.15); color: #f87171; }
+        .badge-warm { background: rgba(245,158,11,0.15); color: #fbbf24; }
+        .badge-low { background: rgba(59,130,246,0.15); color: #60a5fa; }
+        .badge-unscored { background: rgba(100,116,139,0.2); color: #94a3b8; }
+        .badge-processing { background: rgba(168,85,247,0.15); color: #c084fc; }
+        .stage { font-size: 12px; color: #94a3b8; }
+        .stage.qualifying { color: #4ade80; }
+        .stage.escalating { color: #f87171; }
+        .stage.new { color: #60a5fa; }
+        .stage.sending { color: #c084fc; }
+        .stage.closing { color: #fbbf24; }
+        .actions { display: flex; gap: 4px; }
+        .empty { text-align: center; padding: 60px 20px; color: #64748b; }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 100; transition: opacity 0.3s; }
+        .toast-success { background: #166534; color: #bbf7d0; }
+        .toast-error { background: #991b1b; color: #fecaca; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 50; justify-content: center; align-items: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: #1e293b; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; border: 1px solid #334155; }
+        .modal h2 { font-size: 16px; margin-bottom: 8px; }
+        .modal p { font-size: 13px; color: #94a3b8; margin-bottom: 16px; }
+        .modal .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; }
+        .detail-grid .field { }
+        .detail-grid .field-label { font-size: 11px; color: #64748b; text-transform: uppercase; }
+        .detail-grid .field-value { margin-top: 2px; color: #e2e8f0; }
+        .transcript { margin-top: 16px; }
+        .transcript h3 { font-size: 13px; color: #94a3b8; margin-bottom: 8px; }
+        .msg { padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; font-size: 13px; max-width: 85%; }
+        .msg.outbound { background: #1e40af; color: #dbeafe; margin-left: auto; }
+        .msg.inbound { background: #334155; color: #e2e8f0; }
+        .msg-meta { font-size: 10px; color: #64748b; margin-top: 2px; }
+        .score-bar { display: flex; align-items: center; gap: 6px; }
+        .score-num { font-weight: 700; font-size: 15px; }
+        .nav-links { display: flex; gap: 12px; align-items: center; }
+        .nav-links a { color: #94a3b8; text-decoration: none; font-size: 13px; }
+        .nav-links a:hover { color: #e2e8f0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="display:flex;align-items:center;gap:16px;">
+            <h1>UpKeep Admin</h1>
+            <div class="nav-links">
+                <a href="/">Demo Form</a>
+            </div>
+        </div>
+        <div class="header-actions">
+            <div class="auth-bar">
+                <input type="password" id="apiKey" placeholder="Admin API Key" />
+                <button class="btn btn-primary" onclick="loadLeads()">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats" id="stats" style="display:none;">
+        <div class="stat-card"><div class="label">Total Leads</div><div class="value" id="statTotal">0</div></div>
+        <div class="stat-card"><div class="label">Hot</div><div class="value hot" id="statHot">0</div></div>
+        <div class="stat-card"><div class="label">Warm</div><div class="value warm" id="statWarm">0</div></div>
+        <div class="stat-card"><div class="label">Low-Fit</div><div class="value low" id="statLow">0</div></div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Company</th>
+                    <th>Phone</th>
+                    <th>Score</th>
+                    <th>Classification</th>
+                    <th>Stage</th>
+                    <th>Turns</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="leadsBody">
+                <tr><td colspan="10" class="empty">Enter your admin API key and click Connect</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal" style="max-width:600px;">
+            <h2 id="detailTitle">Lead Details</h2>
+            <div id="detailContent"></div>
+            <div class="modal-actions" style="margin-top:16px;">
+                <button class="btn btn-ghost" onclick="closeModal('detailModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal">
+            <h2 id="confirmTitle">Confirm</h2>
+            <p id="confirmMsg"></p>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('confirmModal')">Cancel</button>
+                <button class="btn btn-danger" id="confirmBtn" onclick="confirmAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast" style="display:none;"></div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let pendingAction = null;
+
+        function getKey() {
+            return document.getElementById('apiKey').value;
+        }
+
+        function headers() {
+            return { 'Authorization': `Bearer ${getKey()}`, 'Content-Type': 'application/json' };
+        }
+
+        function toast(msg, type = 'success') {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = `toast toast-${type}`;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 3000);
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            pendingAction = null;
+        }
+
+        function badgeClass(cls) {
+            if (cls === 'hot') return 'badge-hot';
+            if (cls === 'warm') return 'badge-warm';
+            if (cls === 'low-fit') return 'badge-low';
+            if (cls === 'processing') return 'badge-processing';
+            return 'badge-unscored';
+        }
+
+        function stageClass(stage) {
+            return stage || 'new';
+        }
+
+        function formatDate(d) {
+            if (!d) return '-';
+            const dt = new Date(d);
+            if (isNaN(dt)) return d;
+            return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        }
+
+        async function loadLeads() {
+            try {
+                const resp = await fetch(`${API_BASE}/leads`, { headers: headers() });
+                if (!resp.ok) {
+                    toast(resp.status === 401 ? 'Invalid API key' : 'Failed to load leads', 'error');
+                    return;
+                }
+                const data = await resp.json();
+                const leads = data.leads || [];
+
+                document.getElementById('stats').style.display = 'flex';
+                document.getElementById('statTotal').textContent = leads.length;
+                document.getElementById('statHot').textContent = leads.filter(l => l.classification === 'hot').length;
+                document.getElementById('statWarm').textContent = leads.filter(l => l.classification === 'warm').length;
+                document.getElementById('statLow').textContent = leads.filter(l => l.classification === 'low-fit').length;
+
+                const tbody = document.getElementById('leadsBody');
+                if (leads.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" class="empty">No leads yet</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = leads.map(l => `
+                    <tr>
+                        <td>${l.id}</td>
+                        <td><strong>${l.first_name} ${l.last_name}</strong></td>
+                        <td>${l.company || '-'}</td>
+                        <td style="font-size:12px;">${l.phone}</td>
+                        <td><span class="score-num">${l.urgency_score}</span><span style="color:#64748b;">/10</span></td>
+                        <td><span class="badge ${badgeClass(l.classification)}">${l.classification}</span></td>
+                        <td><span class="stage ${stageClass(l.conversation_stage)}">${l.conversation_stage}</span></td>
+                        <td>${l.turn_count}</td>
+                        <td style="font-size:12px;">${formatDate(l.created_at)}</td>
+                        <td class="actions">
+                            <button class="btn btn-ghost btn-sm" onclick="viewLead(${l.id})" title="View">View</button>
+                            <button class="btn btn-warning btn-sm" onclick="promptReset(${l.id}, '${l.first_name} ${l.last_name}')" title="Reset">Reset</button>
+                            <button class="btn btn-danger btn-sm" onclick="promptDelete(${l.id}, '${l.first_name} ${l.last_name}')" title="Delete">Del</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                toast('Connection error: ' + err.message, 'error');
+            }
+        }
+
+        async function viewLead(id) {
+            try {
+                const resp = await fetch(`${API_BASE}/leads/${id}`, { headers: headers() });
+                if (!resp.ok) { toast('Failed to load lead', 'error'); return; }
+                const data = await resp.json();
+                const l = data.lead;
+                const t = data.transcript || [];
+
+                document.getElementById('detailTitle').textContent = `${l.first_name} ${l.last_name}`;
+                document.getElementById('detailContent').innerHTML = `
+                    <div class="detail-grid">
+                        <div class="field"><div class="field-label">Phone</div><div class="field-value">${l.phone}</div></div>
+                        <div class="field"><div class="field-label">Email</div><div class="field-value">${l.email || '-'}</div></div>
+                        <div class="field"><div class="field-label">Company</div><div class="field-value">${l.company || '-'}</div></div>
+                        <div class="field"><div class="field-label">Job Title</div><div class="field-value">${l.job_title || '-'}</div></div>
+                        <div class="field"><div class="field-label">Industry</div><div class="field-value">${l.industry || '-'}</div></div>
+                        <div class="field"><div class="field-label">Score</div><div class="field-value">${l.urgency_score}/10 (${l.classification})</div></div>
+                        <div class="field"><div class="field-label">Stage</div><div class="field-value">${l.conversation_stage}</div></div>
+                        <div class="field"><div class="field-label">Turns</div><div class="field-value">${l.turn_count}</div></div>
+                        <div class="field" style="grid-column:1/-1;"><div class="field-label">Reason for Interest</div><div class="field-value">${l.reason_for_interest || '-'}</div></div>
+                        <div class="field" style="grid-column:1/-1;"><div class="field-label">Rationale</div><div class="field-value">${l.rationale || '-'}</div></div>
+                        <div class="field" style="grid-column:1/-1;"><div class="field-label">Recommended Action</div><div class="field-value">${l.recommended_action || '-'}</div></div>
+                    </div>
+                    ${t.length > 0 ? `
+                    <div class="transcript">
+                        <h3>Conversation (${t.length} messages)</h3>
+                        ${t.map(m => `
+                            <div class="msg ${m.direction}">
+                                ${m.content}
+                                <div class="msg-meta">${m.direction === 'outbound' ? 'Bot' : l.first_name} &middot; ${formatDate(m.created_at)}</div>
+                            </div>
+                        `).join('')}
+                    </div>` : '<div class="transcript"><h3>No messages yet</h3></div>'}
+                `;
+                document.getElementById('detailModal').classList.add('active');
+            } catch (err) {
+                toast('Error: ' + err.message, 'error');
+            }
+        }
+
+        function promptDelete(id, name) {
+            document.getElementById('confirmTitle').textContent = 'Delete Lead';
+            document.getElementById('confirmMsg').textContent = `Permanently delete ${name} (ID ${id}) and all their messages?`;
+            document.getElementById('confirmBtn').textContent = 'Delete';
+            document.getElementById('confirmBtn').className = 'btn btn-danger';
+            pendingAction = async () => {
+                const resp = await fetch(`${API_BASE}/leads/${id}`, { method: 'DELETE', headers: headers() });
+                if (resp.ok) { toast(`${name} deleted`); loadLeads(); }
+                else toast('Delete failed', 'error');
+            };
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        function promptReset(id, name) {
+            document.getElementById('confirmTitle').textContent = 'Reset Lead';
+            document.getElementById('confirmMsg').textContent = `Reset ${name} (ID ${id}) to "new" stage and clear conversation history?`;
+            document.getElementById('confirmBtn').textContent = 'Reset';
+            document.getElementById('confirmBtn').className = 'btn btn-warning';
+            pendingAction = async () => {
+                const resp = await fetch(`${API_BASE}/leads/${id}/reset`, { method: 'POST', headers: headers() });
+                if (resp.ok) { toast(`${name} reset`); loadLeads(); }
+                else toast('Reset failed', 'error');
+            };
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        async function confirmAction() {
+            if (pendingAction) {
+                try { await pendingAction(); }
+                catch (err) { toast('Error: ' + err.message, 'error'); }
+            }
+            closeModal('confirmModal');
+        }
+
+        // Auto-connect if key is in localStorage
+        const savedKey = localStorage.getItem('upkeep_admin_key');
+        if (savedKey) {
+            document.getElementById('apiKey').value = savedKey;
+            loadLeads();
+        }
+
+        // Save key on connect
+        const origLoad = loadLeads;
+        loadLeads = async function() {
+            localStorage.setItem('upkeep_admin_key', getKey());
+            await origLoad();
+        };
+
+        // Enter key to connect
+        document.getElementById('apiKey').addEventListener('keydown', e => {
+            if (e.key === 'Enter') loadLeads();
+        });
+    </script>
+</body>
+</html>

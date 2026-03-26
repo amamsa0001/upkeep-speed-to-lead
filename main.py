@@ -51,6 +51,11 @@ async def demo_form():
     return FileResponse(Path(__file__).parent / "demo.html")
 
 
+@app.get("/admin")
+async def admin_panel():
+    return FileResponse(Path(__file__).parent / "admin.html")
+
+
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 8080))
