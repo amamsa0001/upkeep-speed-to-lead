@@ -319,6 +319,29 @@ async def list_leads(classification: str | None = None) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# claim_lead_for_processing (atomic dedup guard)
+# ---------------------------------------------------------------------------
+async def claim_lead_for_processing(lead_id: int) -> bool:
+    """Atomically set conversation_stage='sending' only if currently 'new'.
+    Returns True if claimed, False if already claimed by another request."""
+    if USE_MYSQL:
+        async with _mysql_conn() as (conn, cur):
+            await cur.execute(
+                "UPDATE leads SET conversation_stage = 'sending' WHERE id = %s AND conversation_stage = 'new'",
+                (lead_id,),
+            )
+            return cur.rowcount > 0
+    else:
+        async with _sqlite_connect() as db:
+            cursor = await db.execute(
+                "UPDATE leads SET conversation_stage = 'sending' WHERE id = ? AND conversation_stage = 'new'",
+                (lead_id,),
+            )
+            await db.commit()
+            return cursor.rowcount > 0
+
+
+# ---------------------------------------------------------------------------
 # delete_lead
 # ---------------------------------------------------------------------------
 async def delete_lead(lead_id: int):
